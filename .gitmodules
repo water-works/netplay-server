@@ -1,0 +1,3 @@
+[submodule "netplay-protos"]
+	path = netplay-protos
+	url = https://github.com/water-works/netplay-protos
