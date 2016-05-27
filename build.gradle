@@ -28,6 +28,7 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'application'
+apply plugin: 'eclipse'
 
 mainClassName = "netplayServer.ServerStart"
 
