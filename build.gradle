@@ -94,9 +94,11 @@ sourceSets {
 }
 
 eclipse {
-    classpath {
-        file.whenMerged { cp ->
-            cp.entries.add( new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/generated/source/proto/main/java', null) )
-        }
+  classpath {
+    file.whenMerged { cp ->
+      cp.entries.add(
+        new org.gradle.plugins.ide.eclipse.model.SourceFolder(
+          'build/generated/source/proto/main/java', null))
     }
+  }
 }
