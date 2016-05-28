@@ -175,17 +175,25 @@ public class ServerTest {
 	public void testNotAllPlayersReady() {
 		server.makeConsole(makeConsoleReq, makeConsoleObserver);
 		long id = makeConsoleObserver.getNextValue().getConsoleId();
-		
+
+		// Plug controller 1
 		PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder()
 				.setConsoleId(id).setDelayFrames(2).setRequestedPort1(Port.PORT_1)
 				.build();
 		server.plugController(pReq, plugControllerObserver);
+		PlugControllerResponsePB plugControllerResponse = plugControllerObserver.getNextValue();
+		assertEquals(PlugControllerResponsePB.Status.SUCCESS, plugControllerResponse.getStatus());
+
+		long clientId1 = plugControllerResponse.getClientId();
+
+		// Plug controller 2
 		pReq = PlugControllerRequestPB.newBuilder()
 				.setConsoleId(id).setDelayFrames(2).setRequestedPort1(Port.PORT_2)
 				.build();
-		
-		long clientId1 = plugControllerObserver.getNextValue().getClientId();
-		
+		server.plugController(pReq, plugControllerObserver);
+		plugControllerResponse = plugControllerObserver.getNextValue();
+		assertEquals(PlugControllerResponsePB.Status.SUCCESS, plugControllerResponse.getStatus());
+
 		OutgoingEventPB readyPb = OutgoingEventPB.newBuilder().setClientReady(
 				ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id)
 				.build()).build();
@@ -196,11 +204,14 @@ public class ServerTest {
 		outgoingSender1.onNext(readyPb);
 		ResponseObserver<IncomingEventPB> eventObserver2 = new ResponseObserver<IncomingEventPB>();
 		server.sendEvent(eventObserver2);
-		
+
 		StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id).build();
 		server.startGame(startRequest, startGameObserver);
 		assertEquals(StartGameResponsePB.Status.UNSPECIFIED_FAILURE,
 				startGameObserver.getNextValue().getStatus());
+
+		assertEquals(null, eventObserver1.getNextValue());
+		assertEquals(null, eventObserver2.getNextValue());
 	}
 	
 	@Test
@@ -276,9 +287,12 @@ public class ServerTest {
 			completed = true;
 		}
 		
+		/*
+		 * Return null if there is no next value.
+		 */
 		public T getNextValue() {
 			if (respQueue.isEmpty()) {
-				fail("Response queue is empty");
+				return null;
 			}
 			return respQueue.remove();
 		}
