@@ -56,6 +56,30 @@ public class ServerTest {
   }
 
   @Test
+  public void testMakeConsoleTooManyConsolesOnDebugServer() {
+    for (int i = 0; i < 10; ++i) {
+      server.makeConsole(makeConsoleReq, makeConsoleObserver);
+      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
+          makeConsoleObserver.getNextValue().getStatus());
+    }
+    try {
+      server.makeConsole(makeConsoleReq, makeConsoleObserver);
+      fail("Expected that the test server will refuse to create more than ten consoles");
+    } catch (IllegalStateException e) {
+    }
+  }
+
+  @Test
+  public void testMakeConsoleNonDebugServerCreatesPlentyOfConsoles() {
+    Server nonDebugServer = new Server(false);
+    for (int i = 0; i < 100; ++i) {
+      nonDebugServer.makeConsole(makeConsoleReq, makeConsoleObserver);
+      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
+          makeConsoleObserver.getNextValue().getStatus());
+    }
+  }
+
+  @Test
   public void testPlugWithNoConsole() {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(1)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
