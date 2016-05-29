@@ -45,6 +45,10 @@ public class ServerTest {
     startGameObserver = new ResponseObserver<StartGameResponsePB>();
   }
 
+  /**
+   * Requests MakeConsole and asserts that the console was successfully created.
+   * @return the console ID of the created console
+   */
   public long makeDefaultConsole() {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
     MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
