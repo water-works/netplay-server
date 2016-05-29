@@ -92,7 +92,6 @@ public class Server implements NetPlayServerService {
       responseObserver.onCompleted();
       return;
     }
-
     if (!consoleMap.containsKey(request.getConsoleId())) {
       PlugControllerResponsePB resp = PlugControllerResponsePB.newBuilder()
           .setStatus(PlugControllerResponsePB.Status.UNSPECIFIED_FAILURE)
@@ -107,7 +106,9 @@ public class Server implements NetPlayServerService {
       client = console.tryAddPlayers(request.getDelayFrames(), request.getRequestedPort1(),
           request.getRequestedPort2(), request.getRequestedPort3(), request.getRequestedPort4());
     } catch (PlugRequestException e) {
-      responseObserver.onNext(getErrorResp(e.getRejections()));
+      responseObserver.onNext(PlugControllerResponsePB.newBuilder()
+          .setStatus(PlugControllerResponsePB.Status.PORT_REQUEST_REJECTED)
+          .addAllPortRejections(e.getRejections()).build());
       responseObserver.onCompleted();
       return;
     }
@@ -118,12 +119,6 @@ public class Server implements NetPlayServerService {
     responseObserver.onNext(resp);
     responseObserver.onCompleted();
 
-  }
-
-  private PlugControllerResponsePB getErrorResp(List<PortRejectionPB> rejections) {
-    return PlugControllerResponsePB.newBuilder()
-        .setStatus(PlugControllerResponsePB.Status.PORT_REQUEST_REJECTED)
-        .addAllPortRejections(rejections).build();
   }
 
   /**

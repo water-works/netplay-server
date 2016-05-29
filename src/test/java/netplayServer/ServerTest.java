@@ -45,6 +45,20 @@ public class ServerTest {
     startGameObserver = new ResponseObserver<StartGameResponsePB>();
   }
 
+  public long makeDefaultConsole() {
+    server.makeConsole(makeConsoleReq, makeConsoleObserver);
+    MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
+    assertEquals(null, makeConsoleObserver.getNextValue());
+    assertTrue(makeConsoleObserver.completed);
+    
+    assertNotEquals(resp, null);
+    assertEquals(MakeConsoleResponsePB.Status.SUCCESS, resp.getStatus());
+    long id = resp.getConsoleId();
+    assertTrue(id > 0);
+
+    return id;
+  }
+
   @Test
   public void testMakeConsole() {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
@@ -90,8 +104,7 @@ public class ServerTest {
 
   @Test
   public void testMakeAndJoinConsole() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
@@ -101,8 +114,7 @@ public class ServerTest {
 
   @Test
   public void testMakeAndJoinConsole_TwoPlayers() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
 
     // Plug in two controllers in two requests. The ports should not be
     // equal.
@@ -126,8 +138,7 @@ public class ServerTest {
 
   @Test
   public void testMakeConsoleNoPortsRequested() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
 
     PlugControllerRequestPB pReq =
         PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2).build();
@@ -143,8 +154,7 @@ public class ServerTest {
    */
   @Test
   public void testMultiplePlayersOneClient() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).setRequestedPort2(Port.PORT_2)
         .setRequestedPort3(Port.PORT_ANY).build();
@@ -164,8 +174,7 @@ public class ServerTest {
    */
   @Test
   public void testReadyAndStartGame() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
@@ -205,8 +214,7 @@ public class ServerTest {
    */
   @Test
   public void testNotAllPlayersReady() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
 
     // Plug controller 1
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
@@ -246,8 +254,7 @@ public class ServerTest {
 
   @Test
   public void testSendKeypresses() {
-    server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    long id = makeConsoleObserver.getNextValue().getConsoleId();
+    long id = makeDefaultConsole();
 
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_1).build();
