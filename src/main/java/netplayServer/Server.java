@@ -19,6 +19,7 @@ import netplayprotos.NetplayServiceProto.PingPB;
 import netplayprotos.NetplayServiceProto.PlugControllerRequestPB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB;
+import netplayprotos.NetplayServiceProto.Port;
 import netplayprotos.NetplayServiceProto.ShutDownServerRequestPB;
 import netplayprotos.NetplayServiceProto.ShutDownServerResponsePB;
 import netplayprotos.NetplayServiceProto.StartGameRequestPB;
@@ -82,6 +83,16 @@ public class Server implements NetPlayServerService {
   @Override
   public void plugController(PlugControllerRequestPB request,
       StreamObserver<PlugControllerResponsePB> responseObserver) {
+    if (request.getRequestedPort1() == Port.UNKNOWN && request.getRequestedPort2() == Port.UNKNOWN
+        && request.getRequestedPort3() == Port.UNKNOWN
+        && request.getRequestedPort4() == Port.UNKNOWN) {
+      responseObserver.onNext(PlugControllerResponsePB.newBuilder()
+          .setStatus(PlugControllerResponsePB.Status.NO_PORTS_REQUESTED)
+          .setConsoleId(request.getConsoleId()).build());
+      responseObserver.onCompleted();
+      return;
+    }
+
     if (!consoleMap.containsKey(request.getConsoleId())) {
       PlugControllerResponsePB resp = PlugControllerResponsePB.newBuilder()
           .setStatus(PlugControllerResponsePB.Status.UNSPECIFIED_FAILURE)
@@ -110,10 +121,6 @@ public class Server implements NetPlayServerService {
   }
 
   private PlugControllerResponsePB getErrorResp(List<PortRejectionPB> rejections) {
-    if (rejections.isEmpty()) {
-      return PlugControllerResponsePB.newBuilder()
-          .setStatus(PlugControllerResponsePB.Status.NO_PORTS_REQUESTED).build();
-    }
     return PlugControllerResponsePB.newBuilder()
         .setStatus(PlugControllerResponsePB.Status.PORT_REQUEST_REJECTED)
         .addAllPortRejections(rejections).build();

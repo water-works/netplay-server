@@ -124,6 +124,20 @@ public class ServerTest {
     assertNotEquals(port1, port2);
   }
 
+  @Test
+  public void testMakeConsoleNoPortsRequested() {
+    server.makeConsole(makeConsoleReq, makeConsoleObserver);
+    long id = makeConsoleObserver.getNextValue().getConsoleId();
+
+    PlugControllerRequestPB pReq =
+        PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2).build();
+    server.plugController(pReq, plugControllerObserver);
+    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
+    assertNotEquals(null, resp);
+    assertEquals(id, resp.getConsoleId());
+    assertEquals(PlugControllerResponsePB.Status.NO_PORTS_REQUESTED, resp.getStatus());
+  }
+
   /**
    * Tests that multiple players from a single client can plug properly.
    */
