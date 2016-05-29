@@ -25,6 +25,8 @@ import netplayprotos.NetplayServiceProto.PlugControllerRequestPB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.Status;
 import netplayprotos.NetplayServiceProto.Port;
+import netplayprotos.NetplayServiceProto.ShutDownServerRequestPB;
+import netplayprotos.NetplayServiceProto.ShutDownServerResponsePB;
 import netplayprotos.NetplayServiceProto.StartGameRequestPB;
 import netplayprotos.NetplayServiceProto.StartGameResponsePB;
 
@@ -71,7 +73,7 @@ public class ServerTest {
     server.ping(PingPB.newBuilder().build(), pingObserver);
     assertNotEquals(null, pingObserver.getNextValue());
   }
-  
+
   @Test
   public void testMakeConsole() {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
@@ -174,10 +176,8 @@ public class ServerTest {
    */
   @Test
   public void testMultiplePlayersOneClient() {
-    ResponseObserver<PlugControllerResponsePB> plugControllerObserver1 =
-        new ResponseObserver<>();
-    ResponseObserver<PlugControllerResponsePB> plugControllerObserver2 =
-        new ResponseObserver<>();
+    ResponseObserver<PlugControllerResponsePB> plugControllerObserver1 = new ResponseObserver<>();
+    ResponseObserver<PlugControllerResponsePB> plugControllerObserver2 = new ResponseObserver<>();
 
     long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
@@ -338,6 +338,37 @@ public class ServerTest {
     prodServer.makeConsole(makeConsoleReq, makeConsoleObserver);
     assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
         makeConsoleObserver.getNextValue().getStatus());
+  }
+
+  @Test
+  public void testShutdownTestServer() {
+    // The server implementation was not passed.
+    ShutDownServerRequestPB req = ShutDownServerRequestPB.newBuilder().build();
+    ResponseObserver<ShutDownServerResponsePB> shutdownObserver = new ResponseObserver<>();
+    server.shutDownServer(req, shutdownObserver);
+    ShutDownServerResponsePB resp = shutdownObserver.getNextValue();
+    assertNotEquals(null, resp);
+    assertTrue(!resp.getServerWillDie());
+
+    // The server implementation was passed
+    server.setServerImpl(new DummyGrpcServer());
+    shutdownObserver = new ResponseObserver<>();
+    server.shutDownServer(req, shutdownObserver);
+    resp = shutdownObserver.getNextValue();
+    assertNotEquals(null, resp);
+    assertTrue(resp.getServerWillDie());
+  }
+
+  @Test
+  public void testShutdownProdServer() {
+    server = new Server(false);
+    server.setServerImpl(new DummyGrpcServer());
+    ShutDownServerRequestPB req = ShutDownServerRequestPB.newBuilder().build();
+    ResponseObserver<ShutDownServerResponsePB> shutdownObserver = new ResponseObserver<>();
+    server.shutDownServer(req, shutdownObserver);
+    ShutDownServerResponsePB resp = shutdownObserver.getNextValue();
+    assertNotEquals(null, resp);
+    assertTrue(!resp.getServerWillDie());
   }
 
   private class ResponseObserver<T> implements StreamObserver<T> {
