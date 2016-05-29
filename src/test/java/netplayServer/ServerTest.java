@@ -47,6 +47,7 @@ public class ServerTest {
 
   /**
    * Requests MakeConsole and asserts that the console was successfully created.
+   * 
    * @return the console ID of the created console
    */
   public long makeDefaultConsole() {
@@ -54,7 +55,7 @@ public class ServerTest {
     MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
     assertEquals(null, makeConsoleObserver.getNextValue());
     assertTrue(makeConsoleObserver.completed);
-    
+
     assertNotEquals(resp, null);
     assertEquals(MakeConsoleResponsePB.Status.SUCCESS, resp.getStatus());
     long id = resp.getConsoleId();
@@ -68,6 +69,8 @@ public class ServerTest {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
     MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
     long id1 = resp.getConsoleId();
+
+    makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
     resp = makeConsoleObserver.getNextValue();
     assertNotEquals(id1, resp.getConsoleId());
@@ -76,11 +79,13 @@ public class ServerTest {
   @Test
   public void testMakeConsoleTooManyConsolesOnDebugServer() {
     for (int i = 0; i < 10; ++i) {
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       server.makeConsole(makeConsoleReq, makeConsoleObserver);
       assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
           makeConsoleObserver.getNextValue().getStatus());
     }
     try {
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       server.makeConsole(makeConsoleReq, makeConsoleObserver);
       fail("Expected that the test server will refuse to create more than ten consoles");
     } catch (IllegalStateException e) {
@@ -91,6 +96,7 @@ public class ServerTest {
   public void testMakeConsoleNonDebugServerCreatesPlentyOfConsoles() {
     Server nonDebugServer = new Server(false);
     for (int i = 0; i < 100; ++i) {
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       nonDebugServer.makeConsole(makeConsoleReq, makeConsoleObserver);
       assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
           makeConsoleObserver.getNextValue().getStatus());
@@ -132,6 +138,8 @@ public class ServerTest {
     Port port1 = resp.getPortList().get(0);
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_ANY).build();
+
+    plugControllerObserver = new ResponseObserver<PlugControllerResponsePB>();
     server.plugController(pReq, plugControllerObserver);
     resp = plugControllerObserver.getNextValue();
     assertEquals(id, resp.getConsoleId());
@@ -158,18 +166,26 @@ public class ServerTest {
    */
   @Test
   public void testMultiplePlayersOneClient() {
+    ResponseObserver<PlugControllerResponsePB> plugControllerObserver1 =
+        new ResponseObserver<PlugControllerResponsePB>();
+    ResponseObserver<PlugControllerResponsePB> plugControllerObserver2 =
+        new ResponseObserver<PlugControllerResponsePB>();
+
     long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).setRequestedPort2(Port.PORT_2)
         .setRequestedPort3(Port.PORT_ANY).build();
-    server.plugController(pReq, plugControllerObserver);
+    server.plugController(pReq, plugControllerObserver1);
+
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_ANY).build();
-    server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
+    server.plugController(pReq, plugControllerObserver2);
+
+    PlugControllerResponsePB resp = plugControllerObserver1.getNextValue();
     assertEquals(3, resp.getPortCount());
     assertTrue(resp.getPortList().contains(Port.PORT_2));
-    resp = plugControllerObserver.getNextValue();
+
+    resp = plugControllerObserver2.getNextValue();
     assertEquals(1, resp.getPortCount());
   }
 
@@ -182,8 +198,10 @@ public class ServerTest {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
-    server.plugController(pReq, plugControllerObserver);
     long clientId1 = plugControllerObserver.getNextValue().getClientId();
+
+    plugControllerObserver = new ResponseObserver<PlugControllerResponsePB>();
+    server.plugController(pReq, plugControllerObserver);
     long clientId2 = plugControllerObserver.getNextValue().getClientId();
     OutgoingEventPB readyPb = OutgoingEventPB.newBuilder()
         .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id).build())
@@ -230,6 +248,7 @@ public class ServerTest {
     long clientId1 = plugControllerResponse.getClientId();
 
     // Plug controller 2
+    plugControllerObserver = new ResponseObserver<PlugControllerResponsePB>();
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_2).build();
     server.plugController(pReq, plugControllerObserver);
@@ -287,9 +306,12 @@ public class ServerTest {
     Server prodServer = new Server(false);
 
     for (int i = 0; i < 10; ++i) {
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       testServer.makeConsole(makeConsoleReq, makeConsoleObserver);
       assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
           makeConsoleObserver.getNextValue().getStatus());
+
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       prodServer.makeConsole(makeConsoleReq, makeConsoleObserver);
       assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
           makeConsoleObserver.getNextValue().getStatus());
@@ -297,12 +319,14 @@ public class ServerTest {
 
     // The test server should fail to create a new console.
     try {
+      makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
       testServer.makeConsole(makeConsoleReq, makeConsoleObserver);
       fail();
     } catch (IllegalStateException e) {
     }
 
     // The prod server should not fail
+    makeConsoleObserver = new ResponseObserver<MakeConsoleResponsePB>();
     prodServer.makeConsole(makeConsoleReq, makeConsoleObserver);
     assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
         makeConsoleObserver.getNextValue().getStatus());
@@ -316,6 +340,7 @@ public class ServerTest {
 
     @Override
     public void onNext(T value) {
+      assertTrue(!completed);
       respQueue.add(value);
     }
 
@@ -326,6 +351,7 @@ public class ServerTest {
 
     @Override
     public void onCompleted() {
+      assertTrue(!completed);
       completed = true;
     }
 
