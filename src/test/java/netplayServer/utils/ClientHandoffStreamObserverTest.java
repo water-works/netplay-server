@@ -1,7 +1,9 @@
 package netplayServer.utils;
 
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,7 +48,7 @@ public class ClientHandoffStreamObserverTest {
   public void setUp() {
     handoffObserver = new ClientHandoffStreamObserver<>(responseObserver, consoleMap);
 
-    when(consoleMap.get(Mockito.any())).thenReturn(null);
+    when(consoleMap.get(any())).thenReturn(null);
     when(consoleMap.get(CONSOLE_ID)).thenReturn(mockConsole);
     when(mockConsole.getClientById(CLIENT_ID)).thenReturn(mockClient);
   }
@@ -58,7 +60,7 @@ public class ClientHandoffStreamObserverTest {
             KeyStatePB.newBuilder().setConsoleId(CONSOLE_ID).setPort(Port.PORT_1).setFrameNumber(1))
         .build();
     handoffObserver.onNext(event);
-    verify(responseObserver, never()).onNext(Mockito.any());
+    verify(responseObserver, never()).onNext(any());
   }
 
   @Test
@@ -70,6 +72,22 @@ public class ClientHandoffStreamObserverTest {
     verify(mockConsole, times(1)).getClientById(CLIENT_ID);
     verify(mockClient, times(1)).setStreamObserver(responseObserver);
     verify(mockClient, times(1)).setReady();
+  }
+
+  @Test
+  public void testOnNextClientReadyMultipleCalls() {
+    OutgoingEventPB event = OutgoingEventPB.newBuilder()
+        .setClientReady(ClientReadyPB.newBuilder().setConsoleId(CONSOLE_ID).setClientId(CLIENT_ID))
+        .build();
+    handoffObserver.onNext(event);
+    verify(mockConsole, times(1)).getClientById(CLIENT_ID);
+    verify(mockClient, times(1)).setStreamObserver(responseObserver);
+    verify(mockClient, times(1)).setReady();
+
+    reset(mockClient);
+    handoffObserver.onNext(event);
+    verify(mockClient, never()).setStreamObserver(any());
+    verify(mockClient, never()).setReady();
   }
 
   @Test
