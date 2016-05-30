@@ -42,7 +42,6 @@ public class Console {
   private List<Port> allPorts =
       ImmutableList.of(Port.PORT_1, Port.PORT_2, Port.PORT_3, Port.PORT_4);
 
-
   private static AtomicLong atomicId = new AtomicLong(1);
 
   private Map<Port, Client> clientPortMap;

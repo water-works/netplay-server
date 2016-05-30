@@ -1,6 +1,5 @@
 package netplayServer;
 
-import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -18,7 +17,6 @@ import netplayprotos.NetplayServiceProto.OutgoingEventPB;
 import netplayprotos.NetplayServiceProto.PingPB;
 import netplayprotos.NetplayServiceProto.PlugControllerRequestPB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB;
-import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB;
 import netplayprotos.NetplayServiceProto.Port;
 import netplayprotos.NetplayServiceProto.ShutDownServerRequestPB;
 import netplayprotos.NetplayServiceProto.ShutDownServerResponsePB;
@@ -153,58 +151,7 @@ public class Server implements NetPlayServerService {
   @Override
   public StreamObserver<OutgoingEventPB> sendEvent(
       StreamObserver<IncomingEventPB> responseObserver) {
-    return new ClientHandoffStreamObserver<OutgoingEventPB>(responseObserver);
-  }
-
-  /**
-   * Implementation of an observer that handles incoming messages to the server. We unfortunately do
-   * not know what client this is for until after we receive a request.
-   * 
-   * @param <T> The proto message to observe
-   */
-  private class ClientHandoffStreamObserver<T> implements StreamObserver<OutgoingEventPB> {
-
-    private StreamObserver<IncomingEventPB> incomingStream;
-
-    public ClientHandoffStreamObserver(StreamObserver<IncomingEventPB> responseObserver) {
-      this.incomingStream = responseObserver;
-    }
-
-    private Client client;
-
-    @Override
-    public void onNext(OutgoingEventPB value) {
-      if (client != null) {
-        client.onNext(value);
-      } else if (value.hasClientReady()) {
-        Console console = consoleMap.get(value.getClientReady().getConsoleId());
-        this.client = console.getClientById(value.getClientReady().getClientId());
-        client.setStreamObserver(incomingStream);
-        client.setReady();
-      } else {
-        log.warn(
-            String.format("Stream message sent without client ready first - ignoring: %s", value));
-      }
-    }
-
-    @Override
-    public void onError(Throwable t) {
-      if (client == null) {
-        log.warn(String.format("Error with no client set"), t);
-      } else {
-        client.onError(t);
-      }
-    }
-
-    @Override
-    public void onCompleted() {
-      if (client == null) {
-        log.warn(String.format("Completed with no client set"));
-      } else {
-        client.onCompleted();
-      }
-    }
-
+    return new ClientHandoffStreamObserver<OutgoingEventPB>(responseObserver, consoleMap);
   }
 
   private io.grpc.Server serverImpl;
