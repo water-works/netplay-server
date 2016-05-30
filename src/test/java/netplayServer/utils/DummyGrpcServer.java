@@ -1,4 +1,4 @@
-package netplayServer;
+package netplayServer.utils;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;

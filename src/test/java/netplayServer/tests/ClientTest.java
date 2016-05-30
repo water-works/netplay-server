@@ -1,4 +1,4 @@
-package netplayServer;
+package netplayServer.tests;
 
 import static org.junit.Assert.assertEquals;
 
@@ -7,6 +7,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import netplayServer.Client;
+import netplayServer.Console;
+import netplayServer.Player;
 import netplayprotos.NetplayServiceProto.Port;
 
 @RunWith(JUnit4.class)

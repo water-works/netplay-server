@@ -1,4 +1,4 @@
-package netplayServer;
+package netplayServer.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -15,6 +15,8 @@ import org.junit.runners.JUnit4;
 import com.google.common.collect.Queues;
 
 import io.grpc.stub.StreamObserver;
+import netplayServer.Server;
+import netplayServer.utils.DummyGrpcServer;
 import netplayprotos.NetplayServiceProto.ClientReadyPB;
 import netplayprotos.NetplayServiceProto.IncomingEventPB;
 import netplayprotos.NetplayServiceProto.MakeConsoleRequestPB;

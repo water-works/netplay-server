@@ -1,4 +1,4 @@
-package netplayServer;
+package netplayServer.utils;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,6 +16,9 @@ import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import io.grpc.stub.StreamObserver;
+import netplayServer.Client;
+import netplayServer.ClientHandoffStreamObserver;
+import netplayServer.Console;
 import netplayprotos.NetplayServiceProto.ClientReadyPB;
 import netplayprotos.NetplayServiceProto.IncomingEventPB;
 import netplayprotos.NetplayServiceProto.InvalidDataPB;

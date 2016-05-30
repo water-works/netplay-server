@@ -1,4 +1,4 @@
-package netplayServer;
+package netplayServer.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -14,6 +14,9 @@ import org.junit.runners.JUnit4;
 
 import com.google.common.collect.ImmutableList;
 
+import netplayServer.Client;
+import netplayServer.Console;
+import netplayServer.PlugRequestException;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB.Reason;
 import netplayprotos.NetplayServiceProto.Port;
