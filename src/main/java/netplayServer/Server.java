@@ -116,7 +116,6 @@ public class Server implements NetPlayServerService {
         .setClientId(clientId).setConsoleId(console.getId()).build();
     responseObserver.onNext(resp);
     responseObserver.onCompleted();
-
   }
 
   /**

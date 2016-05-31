@@ -4,15 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.util.Queue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
-import com.google.common.collect.Queues;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
 
 import io.grpc.stub.StreamObserver;
 import netplayServer.Server;
@@ -32,22 +35,32 @@ import netplayprotos.NetplayServiceProto.ShutDownServerResponsePB;
 import netplayprotos.NetplayServiceProto.StartGameRequestPB;
 import netplayprotos.NetplayServiceProto.StartGameResponsePB;
 
-@RunWith(JUnit4.class)
+@RunWith(MockitoJUnitRunner.class)
 public class ServerTest {
 
   private Server server;
-  ResponseObserver<MakeConsoleResponsePB> makeConsoleObserver;
-  ResponseObserver<PlugControllerResponsePB> plugControllerObserver;
-  ResponseObserver<StartGameResponsePB> startGameObserver;
+  @Mock
+  StreamObserver<PingPB> pingObserver;
+  @Mock
+  StreamObserver<MakeConsoleResponsePB> makeConsoleObserver;
+  @Mock
+  StreamObserver<PlugControllerResponsePB> plugControllerObserver;
+  @Mock
+  StreamObserver<StartGameResponsePB> startGameObserver;
+
+  ArgumentCaptor<MakeConsoleResponsePB> makeConsoleCaptor;
+  ArgumentCaptor<PlugControllerResponsePB> plugControllerCaptor;
+  ArgumentCaptor<StartGameResponsePB> startGameCaptor;
+
 
   MakeConsoleRequestPB makeConsoleReq = MakeConsoleRequestPB.newBuilder().build();
 
   @Before
   public void setUp() {
-    server = new Server(true);
-    makeConsoleObserver = new ResponseObserver<>();
-    plugControllerObserver = new ResponseObserver<>();
-    startGameObserver = new ResponseObserver<>();
+    server = new Server(true); // debug server
+    makeConsoleCaptor = ArgumentCaptor.forClass(MakeConsoleResponsePB.class);
+    plugControllerCaptor = ArgumentCaptor.forClass(PlugControllerResponsePB.class);
+    startGameCaptor = ArgumentCaptor.forClass(StartGameResponsePB.class);
   }
 
   /**
@@ -57,11 +70,10 @@ public class ServerTest {
    */
   public long makeDefaultConsole() {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
-    assertEquals(null, makeConsoleObserver.getNextValue());
-    assertTrue(makeConsoleObserver.completed);
+    verify(makeConsoleObserver).onNext(makeConsoleCaptor.capture());
+    verify(makeConsoleObserver).onCompleted();
+    MakeConsoleResponsePB resp = makeConsoleCaptor.getValue();
 
-    assertNotEquals(resp, null);
     assertEquals(MakeConsoleResponsePB.Status.SUCCESS, resp.getStatus());
     long id = resp.getConsoleId();
     assertTrue(id > 0);
@@ -71,47 +83,52 @@ public class ServerTest {
 
   @Test
   public void testPingWriter() {
-    ResponseObserver<PingPB> pingObserver = new ResponseObserver<>();
     server.ping(PingPB.newBuilder().build(), pingObserver);
-    assertNotEquals(null, pingObserver.getNextValue());
+    verify(pingObserver).onNext(any());
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testMakeConsole() {
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    MakeConsoleResponsePB resp = makeConsoleObserver.getNextValue();
+    verify(makeConsoleObserver).onNext(makeConsoleCaptor.capture());
+    MakeConsoleResponsePB resp = makeConsoleCaptor.getValue();
     long id1 = resp.getConsoleId();
 
-    makeConsoleObserver = new ResponseObserver<>();
+    reset(makeConsoleObserver);
     server.makeConsole(makeConsoleReq, makeConsoleObserver);
-    resp = makeConsoleObserver.getNextValue();
+    verify(makeConsoleObserver).onNext(makeConsoleCaptor.capture());
+    resp = makeConsoleCaptor.getValue();
     assertNotEquals(id1, resp.getConsoleId());
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testMakeConsoleTooManyConsolesOnDebugServer() {
     for (int i = 0; i < 10; ++i) {
-      makeConsoleObserver = new ResponseObserver<>();
+      reset(makeConsoleObserver);
       server.makeConsole(makeConsoleReq, makeConsoleObserver);
-      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
-          makeConsoleObserver.getNextValue().getStatus());
+      verify(makeConsoleObserver).onNext(makeConsoleCaptor.capture());
+      assertEquals(MakeConsoleResponsePB.Status.SUCCESS, makeConsoleCaptor.getValue().getStatus());
     }
     try {
-      makeConsoleObserver = new ResponseObserver<>();
+      reset(makeConsoleObserver);
       server.makeConsole(makeConsoleReq, makeConsoleObserver);
       fail("Expected that the test server will refuse to create more than ten consoles");
     } catch (IllegalStateException e) {
+      // success
     }
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testMakeConsoleNonDebugServerCreatesPlentyOfConsoles() {
     Server nonDebugServer = new Server(false);
     for (int i = 0; i < 100; ++i) {
-      makeConsoleObserver = new ResponseObserver<>();
+      reset(makeConsoleObserver);
       nonDebugServer.makeConsole(makeConsoleReq, makeConsoleObserver);
-      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
-          makeConsoleObserver.getNextValue().getStatus());
+      verify(makeConsoleObserver).onNext(makeConsoleCaptor.capture());
+      assertEquals(MakeConsoleResponsePB.Status.SUCCESS, makeConsoleCaptor.getValue().getStatus());
     }
   }
 
@@ -120,8 +137,8 @@ public class ServerTest {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(1)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
-    assertEquals(Status.UNSPECIFIED_FAILURE, resp.getStatus());
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    assertEquals(Status.UNSPECIFIED_FAILURE, plugControllerCaptor.getValue().getStatus());
   }
 
   @Test
@@ -130,10 +147,11 @@ public class ServerTest {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
-    assertEquals(id, resp.getConsoleId());
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    assertEquals(id, plugControllerCaptor.getValue().getConsoleId());
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testMakeAndJoinConsole_TwoPlayers() {
     long id = makeDefaultConsole();
@@ -144,16 +162,18 @@ public class ServerTest {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    PlugControllerResponsePB resp = plugControllerCaptor.getValue();
     assertEquals(id, resp.getConsoleId());
     assertEquals(1, resp.getPortList().size());
     Port port1 = resp.getPortList().get(0);
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_ANY).build();
 
-    plugControllerObserver = new ResponseObserver<>();
+    reset(plugControllerObserver);
     server.plugController(pReq, plugControllerObserver);
-    resp = plugControllerObserver.getNextValue();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    resp = plugControllerCaptor.getValue();
     assertEquals(id, resp.getConsoleId());
     assertEquals(1, resp.getPortList().size());
     Port port2 = resp.getPortList().get(0);
@@ -167,8 +187,8 @@ public class ServerTest {
     PlugControllerRequestPB pReq =
         PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2).build();
     server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB resp = plugControllerObserver.getNextValue();
-    assertNotEquals(null, resp);
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    PlugControllerResponsePB resp = plugControllerCaptor.getValue();
     assertEquals(id, resp.getConsoleId());
     assertEquals(PlugControllerResponsePB.Status.NO_PORTS_REQUESTED, resp.getStatus());
   }
@@ -176,67 +196,118 @@ public class ServerTest {
   /**
    * Tests that multiple players from a single client can plug properly.
    */
+  @SuppressWarnings("unchecked")
   @Test
   public void testMultiplePlayersOneClient() {
-    ResponseObserver<PlugControllerResponsePB> plugControllerObserver1 = new ResponseObserver<>();
-    ResponseObserver<PlugControllerResponsePB> plugControllerObserver2 = new ResponseObserver<>();
-
     long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).setRequestedPort2(Port.PORT_2)
         .setRequestedPort3(Port.PORT_ANY).build();
-    server.plugController(pReq, plugControllerObserver1);
+    server.plugController(pReq, plugControllerObserver);
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
 
-    pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
-        .setRequestedPort1(Port.PORT_ANY).build();
-    server.plugController(pReq, plugControllerObserver2);
-
-    PlugControllerResponsePB resp = plugControllerObserver1.getNextValue();
+    PlugControllerResponsePB resp = plugControllerCaptor.getValue();
     assertEquals(3, resp.getPortCount());
     assertTrue(resp.getPortList().contains(Port.PORT_2));
 
-    resp = plugControllerObserver2.getNextValue();
-    assertEquals(1, resp.getPortCount());
+    reset(plugControllerObserver);
+    pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
+        .setRequestedPort1(Port.PORT_ANY).build();
+    server.plugController(pReq, plugControllerObserver);
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    assertEquals(1, plugControllerCaptor.getValue().getPortCount());
   }
 
-  /**
-   * Tests the normal flow for two players joining and then starting a game.
-   */
+  @SuppressWarnings("unchecked")
   @Test
-  public void testReadyAndStartGame() {
+  public void testStartGameNoSuchConsoleId() {
     long id = makeDefaultConsole();
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
-    long clientId1 = plugControllerObserver.getNextValue().getClientId();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    long clientId1 = plugControllerCaptor.getValue().getClientId();
 
-    plugControllerObserver = new ResponseObserver<>();
+    reset(plugControllerObserver);
     server.plugController(pReq, plugControllerObserver);
-    long clientId2 = plugControllerObserver.getNextValue().getClientId();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    long clientId2 = plugControllerCaptor.getValue().getClientId();
+
+    // Begin the streams
     OutgoingEventPB readyPb = OutgoingEventPB.newBuilder()
         .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id).build())
         .build();
-    ResponseObserver<IncomingEventPB> eventObserver1 = new ResponseObserver<>();
-
-    // Begin the streams
+    StreamObserver<IncomingEventPB> eventObserver1 = mock(StreamObserver.class);
     StreamObserver<OutgoingEventPB> outgoingSender1 = server.sendEvent(eventObserver1);
     outgoingSender1.onNext(readyPb);
 
     readyPb = OutgoingEventPB.newBuilder()
         .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId2).setConsoleId(id).build())
         .build();
-    ResponseObserver<IncomingEventPB> eventObserver2 = new ResponseObserver<>();
+    StreamObserver<IncomingEventPB> eventObserver2 = mock(StreamObserver.class);
     StreamObserver<OutgoingEventPB> outgoingSender2 = server.sendEvent(eventObserver2);
     outgoingSender2.onNext(readyPb);
 
-    StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id).build();
+    StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id + 1).build();
     server.startGame(startRequest, startGameObserver);
+    verify(startGameObserver).onNext(startGameCaptor.capture());
+    assertEquals(StartGameResponsePB.Status.UNSPECIFIED_FAILURE,
+        startGameCaptor.getValue().getStatus());
+  }
 
-    IncomingEventPB startResp1 = eventObserver1.getNextValue();
-    IncomingEventPB startResp2 = eventObserver2.getNextValue();
+  /**
+   * Tests the normal flow for two players joining and then starting a game.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testReadyAndStartGame() {
+    long id = makeDefaultConsole();
+    PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
+        .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
+    server.plugController(pReq, plugControllerObserver);
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    long clientId1 = plugControllerCaptor.getValue().getClientId();
+
+    reset(plugControllerObserver);
+    server.plugController(pReq, plugControllerObserver);
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    long clientId2 = plugControllerCaptor.getValue().getClientId();
+
+    // Begin the streams.
+    OutgoingEventPB readyPb = OutgoingEventPB.newBuilder()
+        .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id).build())
+        .build();
+    StreamObserver<IncomingEventPB> eventObserver1 = mock(StreamObserver.class);
+    StreamObserver<OutgoingEventPB> outgoingSender1 = server.sendEvent(eventObserver1);
+    outgoingSender1.onNext(readyPb);
+
+    // Send the ready message.
+    readyPb = OutgoingEventPB.newBuilder()
+        .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId2).setConsoleId(id).build())
+        .build();
+    StreamObserver<IncomingEventPB> eventObserver2 = mock(StreamObserver.class);
+    StreamObserver<OutgoingEventPB> outgoingSender2 = server.sendEvent(eventObserver2);
+    outgoingSender2.onNext(readyPb);
+
+    // Verify that the game was started successfully.
+    StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id).build();
+    ArgumentCaptor<IncomingEventPB> incomingCaptor1 =
+        ArgumentCaptor.forClass(IncomingEventPB.class);
+    ArgumentCaptor<IncomingEventPB> incomingCaptor2 =
+        ArgumentCaptor.forClass(IncomingEventPB.class);
+    server.startGame(startRequest, startGameObserver);
+    verify(startGameObserver).onNext(startGameCaptor.capture());
+    assertEquals(startGameCaptor.getValue().getStatus(), StartGameResponsePB.Status.SUCCESS);
+
+    // Verify that the stream clients were notified of the game starting.
+    verify(eventObserver1).onNext(incomingCaptor1.capture());
+    verify(eventObserver2).onNext(incomingCaptor2.capture());
+    IncomingEventPB startResp1 = incomingCaptor1.getValue();
+    IncomingEventPB startResp2 = incomingCaptor2.getValue();
     assertTrue(startResp1.hasStartGame());
     assertTrue(startResp2.hasStartGame());
     assertEquals(startResp1.getStartGame().getConsoleId(), id);
+    assertEquals(startResp2.getStartGame().getConsoleId(), id);
     assertEquals(2, startResp1.getStartGame().getConnectedPortsCount());
     assertEquals(2, startResp2.getStartGame().getConnectedPortsCount());
   }
@@ -244,6 +315,7 @@ public class ServerTest {
   /**
    * Test when start game has been called but not all players are ready.
    */
+  @SuppressWarnings("unchecked")
   @Test
   public void testNotAllPlayersReady() {
     long id = makeDefaultConsole();
@@ -252,37 +324,40 @@ public class ServerTest {
     PlugControllerRequestPB pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id)
         .setDelayFrames(2).setRequestedPort1(Port.PORT_1).build();
     server.plugController(pReq, plugControllerObserver);
-    PlugControllerResponsePB plugControllerResponse = plugControllerObserver.getNextValue();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    PlugControllerResponsePB plugControllerResponse = plugControllerCaptor.getValue();
     assertEquals(PlugControllerResponsePB.Status.SUCCESS, plugControllerResponse.getStatus());
 
     long clientId1 = plugControllerResponse.getClientId();
 
     // Plug controller 2
-    plugControllerObserver = new ResponseObserver<>();
+    reset(plugControllerObserver);
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_2).build();
     server.plugController(pReq, plugControllerObserver);
-    plugControllerResponse = plugControllerObserver.getNextValue();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    plugControllerResponse = plugControllerCaptor.getValue();
     assertEquals(PlugControllerResponsePB.Status.SUCCESS, plugControllerResponse.getStatus());
 
     OutgoingEventPB readyPb = OutgoingEventPB.newBuilder()
         .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id).build())
         .build();
-    ResponseObserver<IncomingEventPB> eventObserver1 = new ResponseObserver<>();
+    StreamObserver<IncomingEventPB> eventObserver1 = mock(StreamObserver.class);
 
     // Send ready only for player 1
     StreamObserver<OutgoingEventPB> outgoingSender1 = server.sendEvent(eventObserver1);
     outgoingSender1.onNext(readyPb);
-    ResponseObserver<IncomingEventPB> eventObserver2 = new ResponseObserver<>();
+    StreamObserver<IncomingEventPB> eventObserver2 = mock(StreamObserver.class);
     server.sendEvent(eventObserver2);
 
+    // Expect the game start event to fail because plaayer 2 isn't ready
     StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id).build();
     server.startGame(startRequest, startGameObserver);
+    verify(startGameObserver).onNext(startGameCaptor.capture());
     assertEquals(StartGameResponsePB.Status.UNSPECIFIED_FAILURE,
-        startGameObserver.getNextValue().getStatus());
-
-    assertEquals(null, eventObserver1.getNextValue());
-    assertEquals(null, eventObserver2.getNextValue());
+        startGameCaptor.getValue().getStatus());
+    verify(eventObserver1, never()).onNext(any());
+    verify(eventObserver2, never()).onNext(any());
   }
 
   @Test
@@ -295,123 +370,57 @@ public class ServerTest {
     pReq = PlugControllerRequestPB.newBuilder().setConsoleId(id).setDelayFrames(2)
         .setRequestedPort1(Port.PORT_2).build();
 
-    long clientId1 = plugControllerObserver.getNextValue().getClientId();
+    verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
+    long clientId1 = plugControllerCaptor.getValue().getClientId();
 
     OutgoingEventPB readyPb = OutgoingEventPB.newBuilder()
         .setClientReady(ClientReadyPB.newBuilder().setClientId(clientId1).setConsoleId(id).build())
         .build();
-    ResponseObserver<IncomingEventPB> eventObserver1 = new ResponseObserver<>();
+    @SuppressWarnings("unchecked")
+    StreamObserver<IncomingEventPB> eventObserver1 = mock(StreamObserver.class);
 
     // Send ready only for player 1
     StreamObserver<OutgoingEventPB> outgoingSender1 = server.sendEvent(eventObserver1);
     outgoingSender1.onNext(readyPb);
-    ResponseObserver<IncomingEventPB> eventObserver2 = new ResponseObserver<>();
+    @SuppressWarnings("unchecked")
+    StreamObserver<IncomingEventPB> eventObserver2 = mock(StreamObserver.class);
     server.sendEvent(eventObserver2);
-
   }
 
-  @Test
-  public void testTestServerWithMoreThanTenConsoles() {
-    Server testServer = new Server(true);
-    Server prodServer = new Server(false);
-
-    for (int i = 0; i < 10; ++i) {
-      makeConsoleObserver = new ResponseObserver<>();
-      testServer.makeConsole(makeConsoleReq, makeConsoleObserver);
-      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
-          makeConsoleObserver.getNextValue().getStatus());
-
-      makeConsoleObserver = new ResponseObserver<>();
-      prodServer.makeConsole(makeConsoleReq, makeConsoleObserver);
-      assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
-          makeConsoleObserver.getNextValue().getStatus());
-    }
-
-    // The test server should fail to create a new console.
-    try {
-      makeConsoleObserver = new ResponseObserver<>();
-      testServer.makeConsole(makeConsoleReq, makeConsoleObserver);
-      fail();
-    } catch (IllegalStateException e) {
-    }
-
-    // The prod server should not fail
-    makeConsoleObserver = new ResponseObserver<>();
-    prodServer.makeConsole(makeConsoleReq, makeConsoleObserver);
-    assertEquals(MakeConsoleResponsePB.Status.SUCCESS,
-        makeConsoleObserver.getNextValue().getStatus());
-  }
-
+  @SuppressWarnings("unchecked")
   @Test
   public void testShutdownTestServer() {
+    ArgumentCaptor<ShutDownServerResponsePB> shutdownCaptor =
+        ArgumentCaptor.forClass(ShutDownServerResponsePB.class);
+
     // The server implementation was not passed.
     ShutDownServerRequestPB req = ShutDownServerRequestPB.newBuilder().build();
-    ResponseObserver<ShutDownServerResponsePB> shutdownObserver = new ResponseObserver<>();
+    StreamObserver<ShutDownServerResponsePB> shutdownObserver = mock(StreamObserver.class);
     server.shutDownServer(req, shutdownObserver);
-    ShutDownServerResponsePB resp = shutdownObserver.getNextValue();
-    assertNotEquals(null, resp);
-    assertTrue(!resp.getServerWillDie());
+    verify(shutdownObserver).onNext(shutdownCaptor.capture());
+    assertTrue(!shutdownCaptor.getValue().getServerWillDie());
 
     // The server implementation was passed
+    reset(shutdownObserver);
     server.setServerImpl(new DummyGrpcServer());
-    shutdownObserver = new ResponseObserver<>();
     server.shutDownServer(req, shutdownObserver);
-    resp = shutdownObserver.getNextValue();
-    assertNotEquals(null, resp);
-    assertTrue(resp.getServerWillDie());
+    verify(shutdownObserver).onNext(shutdownCaptor.capture());
+    assertTrue(shutdownCaptor.getValue().getServerWillDie());
   }
 
   @Test
   public void testShutdownProdServer() {
+    ArgumentCaptor<ShutDownServerResponsePB> shutdownCaptor =
+        ArgumentCaptor.forClass(ShutDownServerResponsePB.class);
+
     server = new Server(false);
     server.setServerImpl(new DummyGrpcServer());
     ShutDownServerRequestPB req = ShutDownServerRequestPB.newBuilder().build();
-    ResponseObserver<ShutDownServerResponsePB> shutdownObserver = new ResponseObserver<>();
+    @SuppressWarnings("unchecked")
+    StreamObserver<ShutDownServerResponsePB> shutdownObserver = mock(StreamObserver.class);
     server.shutDownServer(req, shutdownObserver);
-    ShutDownServerResponsePB resp = shutdownObserver.getNextValue();
-    assertNotEquals(null, resp);
-    assertTrue(!resp.getServerWillDie());
-  }
-
-  private class ResponseObserver<T> implements StreamObserver<T> {
-
-    private Queue<T> respQueue = Queues.newConcurrentLinkedQueue();
-    public Throwable lastThrowable;
-    public boolean completed = false;
-
-    @Override
-    public void onNext(T value) {
-      assertTrue(!completed);
-      respQueue.add(value);
-    }
-
-    @Override
-    public void onError(Throwable t) {
-      lastThrowable = t;
-    }
-
-    @Override
-    public void onCompleted() {
-      assertTrue(!completed);
-      completed = true;
-    }
-
-    /*
-     * Return null if there is no next value.
-     */
-    public T getNextValue() {
-      if (respQueue.isEmpty()) {
-        return null;
-      }
-      return respQueue.remove();
-    }
-
-    /**
-     * Flushes all messages from the queue.
-     */
-    public void clear() {
-      respQueue.clear();
-    }
+    verify(shutdownObserver).onNext(shutdownCaptor.capture());
+    assertTrue(!shutdownCaptor.getValue().getServerWillDie());
   }
 
 }
