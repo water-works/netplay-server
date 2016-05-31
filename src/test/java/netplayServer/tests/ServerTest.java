@@ -138,7 +138,7 @@ public class ServerTest {
         .setDelayFrames(2).setRequestedPort1(Port.PORT_ANY).build();
     server.plugController(pReq, plugControllerObserver);
     verify(plugControllerObserver).onNext(plugControllerCaptor.capture());
-    assertEquals(Status.UNSPECIFIED_FAILURE, plugControllerCaptor.getValue().getStatus());
+    assertEquals(Status.NO_SUCH_CONSOLE, plugControllerCaptor.getValue().getStatus());
   }
 
   @Test
@@ -251,7 +251,7 @@ public class ServerTest {
     StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id + 1).build();
     server.startGame(startRequest, startGameObserver);
     verify(startGameObserver).onNext(startGameCaptor.capture());
-    assertEquals(StartGameResponsePB.Status.UNSPECIFIED_FAILURE,
+    assertEquals(StartGameResponsePB.Status.NO_SUCH_CONSOLE,
         startGameCaptor.getValue().getStatus());
   }
 
@@ -350,11 +350,11 @@ public class ServerTest {
     StreamObserver<IncomingEventPB> eventObserver2 = mock(StreamObserver.class);
     server.sendEvent(eventObserver2);
 
-    // Expect the game start event to fail because plaayer 2 isn't ready
+    // Expect the game start event to fail because player 2 isn't ready
     StartGameRequestPB startRequest = StartGameRequestPB.newBuilder().setConsoleId(id).build();
     server.startGame(startRequest, startGameObserver);
     verify(startGameObserver).onNext(startGameCaptor.capture());
-    assertEquals(StartGameResponsePB.Status.UNSPECIFIED_FAILURE,
+    assertEquals(StartGameResponsePB.Status.CLIENTS_NOT_READY,
         startGameCaptor.getValue().getStatus());
     verify(eventObserver1, never()).onNext(any());
     verify(eventObserver2, never()).onNext(any());

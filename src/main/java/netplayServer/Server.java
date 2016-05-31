@@ -92,7 +92,7 @@ public class Server implements NetPlayServerService {
     }
     if (!consoleMap.containsKey(request.getConsoleId())) {
       PlugControllerResponsePB resp = PlugControllerResponsePB.newBuilder()
-          .setStatus(PlugControllerResponsePB.Status.UNSPECIFIED_FAILURE)
+          .setStatus(PlugControllerResponsePB.Status.NO_SUCH_CONSOLE)
           .setConsoleId(request.getConsoleId()).build();
       responseObserver.onNext(resp);
       responseObserver.onCompleted();
@@ -127,7 +127,7 @@ public class Server implements NetPlayServerService {
       StreamObserver<StartGameResponsePB> responseObserver) {
     if (!consoleMap.containsKey(request.getConsoleId())) {
       StartGameResponsePB resp = StartGameResponsePB.newBuilder()
-          .setStatus(StartGameResponsePB.Status.UNSPECIFIED_FAILURE).build();
+          .setStatus(StartGameResponsePB.Status.NO_SUCH_CONSOLE).build();
       responseObserver.onNext(resp);
       responseObserver.onCompleted();
       return;
@@ -135,7 +135,7 @@ public class Server implements NetPlayServerService {
     Console console = consoleMap.get(request.getConsoleId());
     if (!console.verifyClientsReady()) {
       StartGameResponsePB resp = StartGameResponsePB.newBuilder()
-          .setStatus(StartGameResponsePB.Status.UNSPECIFIED_FAILURE).build();
+          .setStatus(StartGameResponsePB.Status.CLIENTS_NOT_READY).build();
       responseObserver.onNext(resp);
       responseObserver.onCompleted();
       return;
