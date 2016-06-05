@@ -66,9 +66,8 @@ public class Client implements StreamObserver<OutgoingEventPB> {
   /**
    * Adds a player to this client. Will not add a duplicate player.
    */
-  public void addPlayer(Player player) {
-    players.add(player);
-    player.setClient(this);
+  public void addPlayerForPort(Port port) {
+    players.add(new Player(port, this));
   }
 
   /*
@@ -255,4 +254,29 @@ public class Client implements StreamObserver<OutgoingEventPB> {
     }
 
   }
+  
+  private static class Player {
+    public static AtomicLong atomicId = new AtomicLong();
+
+    private long id;
+    private Port port;
+    private Client client;
+
+    public Player(Port port, Client client) {
+      this.id = atomicId.getAndIncrement();
+      this.port = port;
+      this.client = client;
+    }
+
+    public Port getPort() {
+      return port;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("Id: %d, Port: %d, ClientId: %d", id, port.getNumber(),
+          client != null ? client.getId() : 0);
+    }
+  }
+
 }

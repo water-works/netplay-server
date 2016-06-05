@@ -9,7 +9,6 @@ import org.junit.runners.JUnit4;
 
 import netplayServer.Client;
 import netplayServer.Console;
-import netplayServer.Player;
 import netplayprotos.NetplayServiceProto.Port;
 
 @RunWith(JUnit4.class)
@@ -26,12 +25,11 @@ public class ClientTest {
   }
 
   @Test
-  public void testAddPlayer() {
-    Player player = new Player(Port.PORT_1);
+  public void testAddPlayerForPort() {
     assertEquals(0, client.getPorts().size());
-    client.addPlayer(player);
+    client.addPlayerForPort(Port.PORT_1);
     assertEquals(1, client.getPorts().size());
-    client.addPlayer(player);
+    client.addPlayerForPort(Port.PORT_1);
     assertEquals(1, client.getPorts().size());
   }
 

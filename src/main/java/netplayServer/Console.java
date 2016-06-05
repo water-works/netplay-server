@@ -130,8 +130,7 @@ public class Console {
     }
     for (Port port : assignedPorts) {
       clientPortMap.put(port, newClient);
-      Player player = new Player(port, newClient);
-      newClient.addPlayer(player);
+      newClient.addPlayerForPort(port);
     }
     return newClient;
   }
