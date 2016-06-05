@@ -20,6 +20,7 @@ import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionP
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB.Builder;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB.Reason;
 import netplayprotos.NetplayServiceProto.Port;
+import netplayprotos.NetplayServiceProto.StopConsolePB;
 
 /**
  * A console represents the physical game console that maintains the state of the game, and also
@@ -27,7 +28,7 @@ import netplayprotos.NetplayServiceProto.Port;
  */
 public class Console {
 
-  private Log log = LogFactory.getLog(Server.class);
+  private Log log = LogFactory.getLog(Console.class);
 
   public enum ConsoleStatus {
     UNKNOWN(0), CREATED(1), POWERED(2), DONE(3);
@@ -47,11 +48,13 @@ public class Console {
   private Map<Port, Client> clientPortMap;
   private long consoleId;
   private ConsoleStatus status;
+  private Server server;
 
-  public Console() {
+  public Console(Server server) {
     this.consoleId = atomicId.getAndIncrement();
     this.clientPortMap = Maps.newConcurrentMap();
     this.status = ConsoleStatus.CREATED;
+    this.server = server;
   }
 
   private Set<Client> allClients() {
@@ -169,6 +172,16 @@ public class Console {
       }
       client.acceptKeyPresses(keyPressList);
     }
+  }
+
+  public void broadcastStopConsole(StopConsolePB.Reason reason, Client requestingClient) {
+    for (Client client : allClients()) {
+      log.info("this client: " + client.getId() + ", requesting client: " + requestingClient.getId());
+      if (client.getId() != requestingClient.getId()) {
+        client.acceptStopConsole(reason);
+      }
+    }
+    server.tearDownConsole(consoleId);
   }
 
   public Map<Port, Integer> getPortDelayMap() {

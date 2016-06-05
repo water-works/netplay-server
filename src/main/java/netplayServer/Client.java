@@ -13,6 +13,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 import com.google.common.collect.Sets;
 
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import netplayprotos.NetplayServiceProto.IncomingEventPB;
 import netplayprotos.NetplayServiceProto.InvalidDataPB;
@@ -21,6 +22,7 @@ import netplayprotos.NetplayServiceProto.OutgoingEventPB;
 import netplayprotos.NetplayServiceProto.Port;
 import netplayprotos.NetplayServiceProto.StartGamePB;
 import netplayprotos.NetplayServiceProto.StartGamePB.ConnectedPortPB;
+import netplayprotos.NetplayServiceProto.StopConsolePB;
 
 /**
  * The client class represents a destination for incoming/outgoing events. A client may contain any
@@ -147,6 +149,10 @@ public class Client implements StreamObserver<OutgoingEventPB> {
     streamHandler.returnKeypresses(keyPressList);
   }
 
+  public void acceptStopConsole(StopConsolePB.Reason reason) {
+    streamHandler.returnStopConsole(reason);
+  }
+
   @Override
   public void onNext(OutgoingEventPB value) {
     if (streamHandler == null) {
@@ -198,6 +204,18 @@ public class Client implements StreamObserver<OutgoingEventPB> {
       this.incomingStream = incomingStream;
     }
 
+    public void returnStopConsole(StopConsolePB.Reason reason) {
+      IncomingEventPB event = IncomingEventPB.newBuilder()
+          .setStopConsole(
+              StopConsolePB.newBuilder().setConsoleId(console.getId()).setStopReason(reason))
+          .build();
+      try {
+        incomingStream.onNext(event);
+      } catch (StatusRuntimeException e) {
+        log.warn("Failed to write stop console event to client with ID " + clientId + ": " + e);
+      }
+    }
+
     public void returnKeypresses(List<KeyStatePB> presses) {
       IncomingEventPB event = IncomingEventPB.newBuilder().addAllKeyPress(presses).build();
       incomingStream.onNext(event);
@@ -238,7 +256,9 @@ public class Client implements StreamObserver<OutgoingEventPB> {
     @Override
     public void onError(Throwable t) {
       log.warn(String.format("Error on stream for client %d: %s", clientId, t));
+      console.broadcastStopConsole(StopConsolePB.Reason.ERROR, Client.this);
     }
+
 
     @Override
     public void onCompleted() {
@@ -254,7 +274,7 @@ public class Client implements StreamObserver<OutgoingEventPB> {
     }
 
   }
-  
+
   private static class Player {
     public static AtomicLong atomicId = new AtomicLong();
 

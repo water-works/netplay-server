@@ -11,12 +11,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
 
 import com.google.common.collect.ImmutableList;
 
 import netplayServer.Client;
 import netplayServer.Console;
 import netplayServer.PlugRequestException;
+import netplayServer.Server;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB;
 import netplayprotos.NetplayServiceProto.PlugControllerResponsePB.PortRejectionPB.Reason;
 import netplayprotos.NetplayServiceProto.Port;
@@ -25,12 +27,13 @@ import netplayprotos.NetplayServiceProto.Port;
 public class ConsoleTest {
 
   private Console console;
+  @Mock private Server server;
   private List<Port> allPorts =
       ImmutableList.of(Port.PORT_1, Port.PORT_2, Port.PORT_3, Port.PORT_4);
 
   @Before
   public void setUp() {
-    console = new Console();
+    console = new Console(server);
   }
 
   @Test

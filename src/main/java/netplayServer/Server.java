@@ -60,7 +60,7 @@ public class Server implements NetPlayServerService {
           "Server running in test mode created a client with ID greater than 10");
     }
 
-    Console newConsole = new Console();
+    Console newConsole = new Console(this);
     numConsolesCreated++;
 
     long id = newConsole.getId();
@@ -151,6 +151,10 @@ public class Server implements NetPlayServerService {
   public StreamObserver<OutgoingEventPB> sendEvent(
       StreamObserver<IncomingEventPB> responseObserver) {
     return new ClientHandoffStreamObserver<OutgoingEventPB>(responseObserver, consoleMap);
+  }
+
+  public void tearDownConsole(long consoleId) {
+    consoleMap.remove(consoleId);
   }
 
   private io.grpc.Server serverImpl;
