@@ -79,7 +79,7 @@ public class Console {
    * @return
    */
   public synchronized Client tryAddPlayers(int delay, Port... ports) throws PlugRequestException {
-    Set<Port> availablePorts = Sets.newHashSet();
+    List<Port> availablePorts = Lists.newArrayList();
     List<PortRejectionPB> rejectionList = Lists.newArrayList();
     for (Port port : allPorts) {
       if (!clientPortMap.containsKey(port))

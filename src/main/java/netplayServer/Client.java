@@ -58,21 +58,29 @@ public class Client implements StreamObserver<OutgoingEventPB> {
     this.delay = delay;
   }
 
-  /**
-   * Sets this client to ready state - must be called before the start of the game.
-   */
-  public void setReady() {
-    this.status = ClientStatus.READY;
-  }
+  	/**
+	 * Sets this client to ready state - must be called before the start of the
+	 * game.
+	 */
+	public void setReady() {
+		this.status = ClientStatus.READY;
+	}
+
+	/**
+	 * Adds a player to this client. Will not add a duplicate player.
+	 * Returns true if a player was successfully added.
+	 */
+	public boolean addPlayerForPort(Port port) {
+		if (getPlayer(port) != null) {
+			log.warn(String.format("Cannot add duplicate player on port %s for console %d", 
+					port, console.getId()));
+			return false;
+		}
+		players.add(new Player(port, this));
+		return true;
+	}
 
   /**
-   * Adds a player to this client. Will not add a duplicate player.
-   */
-  public void addPlayerForPort(Port port) {
-    players.add(new Player(port, this));
-  }
-
-  /*
    * Returns the player at this port or null if port is unoccupied.
    */
   public Player getPlayer(Port port) {
@@ -135,6 +143,7 @@ public class Client implements StreamObserver<OutgoingEventPB> {
           .setDelayFrames(entry.getValue()).build());
     }
     streamHandler.returnStartGame(playerList);
+    this.status = ClientStatus.PLAYING;
   }
 
   /**
@@ -275,7 +284,7 @@ public class Client implements StreamObserver<OutgoingEventPB> {
 
   }
 
-  private static class Player {
+  public static class Player {
     public static AtomicLong atomicId = new AtomicLong();
 
     private long id;
@@ -290,6 +299,10 @@ public class Client implements StreamObserver<OutgoingEventPB> {
 
     public Port getPort() {
       return port;
+    }
+    
+    public Client getClient() {
+    	return client;
     }
 
     @Override

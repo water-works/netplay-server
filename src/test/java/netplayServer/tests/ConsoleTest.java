@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -42,6 +43,22 @@ public class ConsoleTest {
     assertEquals(1, client.getPorts().size());
     assertEquals(Port.PORT_1, client.getPorts().iterator().next());
   }
+  
+  @Test
+  public void testBasicClientPortAny() throws PlugRequestException {
+	Client client = console.tryAddPlayers(1, Port.PORT_ANY);
+	assertEquals(1, client.getPorts().size());
+	assertEquals(Port.PORT_1, client.getPorts().iterator().next());
+  }
+  
+  @Test
+  public void testBasicClientTwoPortAny() throws PlugRequestException {
+	Client client = console.tryAddPlayers(1, Port.PORT_ANY, Port.PORT_ANY);
+	assertEquals(2, client.getPorts().size());
+	Set<Port> ports = client.getPorts();
+	assertTrue(ports.contains(Port.PORT_1));
+	assertTrue(ports.contains(Port.PORT_2));
+  }
 
   @Test
   public void testBasicClientFourPorts() throws PlugRequestException {
@@ -51,7 +68,7 @@ public class ConsoleTest {
   }
 
   @Test
-  public void testBasicClientPortAny() throws PlugRequestException {
+  public void testFourPlayerClientPortAny() throws PlugRequestException {
     Client client = console.tryAddPlayers(1, Port.PORT_1, Port.PORT_ANY, Port.PORT_2, Port.PORT_3);
     assertEquals(4, client.getPorts().size());
     assertTrue(

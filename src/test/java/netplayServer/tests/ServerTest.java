@@ -84,7 +84,7 @@ public class ServerTest {
   @Test
   public void testPingWriter() {
     server.ping(PingPB.newBuilder().build(), pingObserver);
-    verify(pingObserver).onNext(any());
+    verify(pingObserver).onNext(any(PingPB.class));
   }
 
   @SuppressWarnings("unchecked")
@@ -356,8 +356,8 @@ public class ServerTest {
     verify(startGameObserver).onNext(startGameCaptor.capture());
     assertEquals(StartGameResponsePB.Status.CLIENTS_NOT_READY,
         startGameCaptor.getValue().getStatus());
-    verify(eventObserver1, never()).onNext(any());
-    verify(eventObserver2, never()).onNext(any());
+    verify(eventObserver1, never()).onNext(any(IncomingEventPB.class));
+    verify(eventObserver2, never()).onNext(any(IncomingEventPB.class));
   }
 
   @Test

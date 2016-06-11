@@ -59,7 +59,7 @@ public class ClientHandoffStreamObserverTest {
             KeyStatePB.newBuilder().setConsoleId(CONSOLE_ID).setPort(Port.PORT_1).setFrameNumber(1))
         .build();
     handoffObserver.onNext(event);
-    verify(responseObserver, never()).onNext(any());
+    verify(responseObserver, never()).onNext((IncomingEventPB) any());
   }
 
   @Test
@@ -85,7 +85,7 @@ public class ClientHandoffStreamObserverTest {
 
     reset(mockClient);
     handoffObserver.onNext(event);
-    verify(mockClient, never()).setStreamObserver(any());
+    verify(mockClient, never()).setStreamObserver((StreamObserver<IncomingEventPB>) any());
     verify(mockClient, never()).setReady();
   }
 
