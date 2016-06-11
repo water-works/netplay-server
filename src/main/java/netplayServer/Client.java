@@ -62,23 +62,23 @@ public class Client implements StreamObserver<OutgoingEventPB> {
 	 * Sets this client to ready state - must be called before the start of the
 	 * game.
 	 */
-	public void setReady() {
-		this.status = ClientStatus.READY;
-	}
+  public void setReady() {
+    this.status = ClientStatus.READY;
+  }
 
 	/**
 	 * Adds a player to this client. Will not add a duplicate player.
 	 * Returns true if a player was successfully added.
 	 */
-	public boolean addPlayerForPort(Port port) {
-		if (getPlayer(port) != null) {
-			log.warn(String.format("Cannot add duplicate player on port %s for console %d", 
-					port, console.getId()));
-			return false;
-		}
-		players.add(new Player(port, this));
-		return true;
-	}
+  public boolean addPlayerForPort(Port port) {
+    if (getPlayer(port) != null) {
+    log.warn(String.format("Cannot add duplicate player on port %s for console %d", 
+				port, console.getId()));
+    return false;
+    }
+    players.add(new Player(port, this));
+    return true;
+  }
 
   /**
    * Returns the player at this port or null if port is unoccupied.
