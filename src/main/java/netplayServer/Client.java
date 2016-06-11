@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -33,7 +35,7 @@ public class Client implements StreamObserver<OutgoingEventPB> {
   private Log log = LogFactory.getLog(this.getClass());
 
   public enum ClientStatus {
-    UNKNOWN(0), CREATED(1), READY(2), PLAYING(3), DONE(4);
+    UNKNOWN(0), CREATED(1), READY(2), PLAYING(3), DONE(4), SPECTATING(5);
 
     int statusInt;
 
@@ -49,6 +51,8 @@ public class Client implements StreamObserver<OutgoingEventPB> {
   private ClientStreamHandler streamHandler;
   private Console console;
   private ClientStatus status;
+  private ExecutorService keypressVisitorExecutor = Executors.newSingleThreadExecutor();
+  
 
   public Client(Console console, int delay) {
     this.clientId = atomicId.incrementAndGet();
